@@ -1,10 +1,13 @@
 import sys
 sys.path.append(r"..")
 from agoTools.admin import Admin
-if sys.argv[1]=='css':
-    agoAdmin = Admin("user_name_here",password="password")
-if sys.argv[1]=='sb':
-    agoAdmin = Admin("user_name_here",password="password")
+#######Enter ago org admin credentials below######
+adminUsername = "org admin user"
+adminPassword = "the admin user password"
+##################################################
+
+agoAdmin = Admin(adminUsername,password=adminPassword)
+
 users = agoAdmin.getUsers()
 ents = agoAdmin.getEntitlements()
 newUsers = []
