@@ -4,7 +4,22 @@ from agoTools.admin import Admin
 #######Enter ago org admin credentials below######
 adminUsername = "org admin user"
 adminPassword = "the admin user password"
-##################################################
+######Current licensing options to use for userEntitlements######
+##PRO (pick one):
+##  Basic = desktopBasicN
+##  Standard = destkopStdN
+##  Advanced = desktopAdvN
+##Extensions (add all that apply):
+##   Spatial Analyst = SpatialAnalystN
+##   3D Analyst = 3DAnalystN
+##   Network Analyst = 3DnetworkAnalystN
+##   Geostatistical Analyst = geostatAnalystN
+##   Data Reviewer: dataReviewerN
+##   Workflow Manager: workflowMgrN
+##   Data Interoperability: dataInteropN
+####################################
+userEntitlements = ["desktopAdvN","3DAnalystN","dataReviewerN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN","dataInteropN"]
+
 
 agoAdmin = Admin(adminUsername,password=adminPassword)
 
@@ -23,5 +38,5 @@ for user in users:
        ## print user["username"]
 
 
-response= agoAdmin.setEntitlements(newUsers,["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"])
+response= agoAdmin.setEntitlements(newUsers,userEntitlements)
 print response
