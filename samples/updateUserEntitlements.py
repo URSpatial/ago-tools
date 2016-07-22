@@ -7,7 +7,7 @@ try:
     adminPassword = "your_admin_password"
     ##2) Update & overwrite licenses for everyone or just assign to users with no current entitlements
     overwriteAll = False
-    ##3) Current licensing options to use for userEntitlements######
+    ##3) Modify licensing options in userEntitlements list if necessary.######
     ##PRO (pick one):
     ##  Basic = desktopBasicN
     ##  Standard = destkopStdN
