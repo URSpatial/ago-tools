@@ -258,15 +258,6 @@ class Admin:
         print '        from USER ' + userFrom + ' to USER ' + userTo
 
         return
-    def setUserFullName(self, userName, FullName):
-        '''Updates user profile first and last name for one user
-        parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
-        parameters= urllib.urlencode({"FullName": FullName,
-                        'f' : 'json',
-                        'token': self.user.token})
-        request = self.user.portalUrl + '/sharing/rest/community/users/'+ str(userName)+'/update'
-        response = urllib.urlopen(request, parameters).read()   # requires POST
-
     def reassignGroupOwnership(self,groupId,userTo):
         parameters ={'token' : self.user.token,
                        'f' : 'json',
