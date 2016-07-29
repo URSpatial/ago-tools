@@ -272,7 +272,26 @@ class Admin:
 
         result = response.read()
         return json.loads(result)
+    def setUserType(self, userName, userType):
+        '''Updates user profile first and last name for one user
+        parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
+        parameters= urllib.urlencode({"usertype": userType,
+                        'f' : 'json',
+                        'token': self.user.token})
+        request = self.user.portalUrl + '/sharing/rest/community/users/'+ str(userName)+'/update'
+        response = urllib.urlopen(request, parameters).read()   # requires POST
 
+
+#           The following commented out code is in progress
+
+##        def getUsersNamesByEmail(self, email):
+##        '''Updates user profile first and last name for one user
+##        parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
+##        parameters= urllib.urlencode({
+##                                    'token': self.user.token,
+##                                    'f' : 'json' })
+##        request = self.user.portalUrl + '/sharing/rest/community/users?'+ parameters
+##        response = urllib.urlopen(request, parameters).read()   # requires POST
     def setEntitlements(self,users,entitlements=["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"]):
         '''Sets entitlements for users
         - users parameter is a List of username strings
