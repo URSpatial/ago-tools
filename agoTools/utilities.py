@@ -15,7 +15,7 @@ def searchPortal(portal, query=None, totalResults=None, sortField='numviews', so
     if not totalResults or totalResults > 100:
         numResults = 100
     else:
-        numResults = totalResults
+        numResults = totalResultsn
     results = __search__(portal, query, numResults, sortField, sortOrder, 0, token)
 
     if not 'error' in results.keys():
@@ -222,7 +222,7 @@ class Utilities:
         request = self.user.portalUrl + '/sharing/rest/content/users/' + userName + '?' + parameters
         userContent = json.loads(urllib.urlopen(request).read())
         return userContent['folders']
-    
+
     def getUserGroups(self, username=None):
         '''
         Returns all groups for the specified user.'''

@@ -3,8 +3,8 @@ sys.path.append(r"..")
 from agoTools.admin import Admin
 try:
     ##1) Enter ago org admin credentials below######
-    adminUsername = "your_admin_username"
-    adminPassword = "your_admin_password"
+    adminUsername = "CenterSpatialStudiesUoR"
+    adminPassword = "Redlands!1"
     ##2) Update & overwrite licenses for everyone or just assign to users with no current entitlements
     overwriteAll = False
     ##3) Modify licensing options in userEntitlements list if necessary.######
