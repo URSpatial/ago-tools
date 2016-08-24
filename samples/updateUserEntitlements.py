@@ -2,12 +2,18 @@ import sys
 sys.path.append(r"..")
 from agoTools.admin import Admin
 try:
-    ##1) Enter ago org admin credentials below######
-    adminUsername = "CenterSpatialStudiesUoR"
-    adminPassword = "Redlands!1"
-    ##2) Update & overwrite licenses for everyone or just assign to users with no current entitlements
+    if len(sys.argv) > 1:
+        adminUsername = sys.argv[1]
+        adminPassword = sys.argv[2]
+
+    else:
+        adminUsername = "your_admin_username"
+        adminPassword = "your_admin_password"
+    ##2)set constrainDays to a number greater than 0 to narrow getUsers results based on the difference between current date-time and user creation date-time. Leave set to 0 in order to use default 10000 days
+    constrainDays = 0
+    ##3) Update & overwrite licenses for everyone or just assign to users with no current entitlements
     overwriteAll = False
-    ##3) Modify licensing options in userEntitlements list if necessary.######
+    ##4) Modify licensing options in userEntitlements list if necessary.######
     ##PRO (pick one):
     ##  Basic = desktopBasicN
     ##  Standard = destkopStdN
@@ -21,12 +27,15 @@ try:
     ##   Workflow Manager: workflowMgrN
     ##   Data Interoperability: dataInteropN
     ####################################
-    userEntitlements = ["desktopAdvN","3DAnalystN","dataReviewerN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN","dataInteropN"]
-
-
     agoAdmin = Admin(adminUsername,password=adminPassword)
 
-    users = agoAdmin.getUsers()
+    if constrainDays:
+        users=agoAdmin.getUsers(daysToCheck=constrainDays)
+    else:
+        users= agoAdmin.getUsers()
+    print str(len(users)) + " users found."
+
+    userEntitlements = ["desktopAdvN","3DAnalystN","dataReviewerN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN","dataInteropN"]
     ents = agoAdmin.getEntitlements()
     newUsers = []
     for user in users:
@@ -44,5 +53,5 @@ try:
 
     response= agoAdmin.setEntitlements(newUsers,userEntitlements)
     print response
-except:
-    print "error"
+except Exception,e:
+    print str(e)
