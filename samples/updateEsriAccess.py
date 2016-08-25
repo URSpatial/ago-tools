@@ -12,7 +12,9 @@ try:
 
     ##2) set userType to 'both' to enable Esri Access or 'arcgisonly' to disable
     userType = "both"
-
+   -##3) Set constrainDays to a number greater than 0 to filter users created in the last n days. 
+    ##    Leave set to 0 in to use default 10000 days
+ -  constrainDays = 0
     ####################################
     agoAdmin = Admin(adminUsername,password=adminPassword)
     ##users = agoAdmin.getUsers()
@@ -22,7 +24,6 @@ try:
         users= agoAdmin.getUsers()
 
     print str(len(users)) + " users found."
-## Set splitString to the character or string that is used to find defualt-formated fullName. splitString will be used as the point at which the username string is split on parsing.
     for user in users:
         userName=user["username"]
         print userName
