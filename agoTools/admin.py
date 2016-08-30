@@ -292,33 +292,53 @@ class Admin:
 ##                                    'f' : 'json' })
 ##        request = self.user.portalUrl + '/sharing/rest/community/users?'+ parameters
 ##        response = urllib.urlopen(request, parameters).read()   # requires POST
-    def setEntitlements(self,users,entitlements=["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"]):
+    def setEntitlements(self,newUsers):
         '''Sets entitlements for users
         - users parameter is a List of username strings
         '''
-        userNames= []
-        for user in users:
-            userNames.append(str(user["username"]))
-        print userNames
-        parameters= urllib.urlencode({"userEntitlements":{"users":userNames, "entitlements":entitlements},
-                        'f' : 'json',
-                        'token': self.user.token})
-        request = self.user.portalUrl + '/sharing/rest/content/listings/2d2a9c99bb2a43548c31cd8e32217af6/provisionUserEntitlements'
-        response = urllib.urlopen(request, parameters).read()   # requires POST
-        message="Unknown error"
-        if 'success' in response:
-            message= "Entitlements successfully set"
-        elif 'error' in response3:
-            message= "And error has occurred: " + response["error"]
-        return message
+        try:
 
-    def getEntitlements(self):
+
+
+            prodNumbers={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo":"5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51", "cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
+            prodTags = {"pro":["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"], "geo":["GeoPlanner"], "app":["appstudiostd"], "cao":["CommunityAnlyst"], "bao":["BusinessAnlyst"]}
+
+            for user in newUsers:
+                product = user
+
+                userNames= newUsers[product]
+
+                productNum=prodNumbers[product]
+                entTag=prodTags[product]
+
+
+                parameters= urllib.urlencode({"userEntitlements":{"users":userNames, "entitlements":entTag},
+                                'f' : 'json',
+                                'token': self.user.token})
+                request = self.user.portalUrl + '/sharing/rest/content/listings/'+ productNum +'/provisionUserEntitlements'
+                response = urllib.urlopen(request, parameters).read()   # requires POST
+                message="Unknown error"
+                if 'success' in response:
+                    message= "Entitlements successfully set for " +product
+                elif 'error' in response:
+                    message= "And error has occurred: " + response
+                print message
+        except Exception, e:
+            print e
+    def getEntitlements(self, products):
+        productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo": "5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51" ,"cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
         parameters = urllib.urlencode({'token' : self.user.token,
                                        'f' : 'json'
                                       })
-        response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/content/listings/2d2a9c99bb2a43548c31cd8e32217af6/userEntitlements?' + parameters).read()
-        entitlements = json.loads(response)
-        return entitlements["userEntitlements"]
+        productUsers={}
+        for product in products:
+            response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/content/listings/'+ productsDict[product] +'/userEntitlements?' + parameters).read()
+            entitlements = json.loads(response)
+            entitlements["userEntitlements"]
+            productUsers[product] = entitlements["userEntitlements"]
+
+        return productUsers
+
 
     def reassignAllGroupOwnership(self, userFrom, userTo):
         '''

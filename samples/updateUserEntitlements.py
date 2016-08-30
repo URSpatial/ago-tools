@@ -2,6 +2,7 @@ import sys
 sys.path.append(r"..")
 from agoTools.admin import Admin
 try:
+        ##1) Enter ago org admin credentials as comandline parameter or enter them below######
     if len(sys.argv) > 1:
         adminUsername = sys.argv[1]
         adminPassword = sys.argv[2]
@@ -13,45 +14,63 @@ try:
     constrainDays = 0
     ##3) Update & overwrite licenses for everyone or just assign to users with no current entitlements
     overwriteAll = False
-    ##4) Modify licensing options in userEntitlements list if necessary.######
-    ##PRO (pick one):
-    ##  Basic = desktopBasicN
-    ##  Standard = destkopStdN
-    ##  Advanced = desktopAdvN
-    ##Extensions (add all that apply):
-    ##   Spatial Analyst = SpatialAnalystN
-    ##   3D Analyst = 3DAnalystN
-    ##   Network Analyst = 3DnetworkAnalystN
-    ##   Geostatistical Analyst = geostatAnalystN
-    ##   Data Reviewer: dataReviewerN
-    ##   Workflow Manager: workflowMgrN
-    ##   Data Interoperability: dataInteropN
+    ##4) Define which products to grant entitlements for.######
+
+    arcGISPro=True
+    geoPlanner= False
+    appStudio=False
+    communityAnalyst=True
+    businessAnalyst=True
+
+
     ####################################
     agoAdmin = Admin(adminUsername,password=adminPassword)
+
+    products = []
+    if arcGISPro:
+        products.append("pro")
+    if geoPlanner:
+        products.append("geo")
+    if appStudio:
+        products.append("app")
+    if communityAnalyst:
+        products.append("cao")
+    if businessAnalyst:
+        products.append("bao")
 
     if constrainDays:
         users=agoAdmin.getUsers(daysToCheck=constrainDays)
     else:
         users= agoAdmin.getUsers()
-    print str(len(users)) + " users found."
+    #print str(len(users)) + " users found."
 
-    userEntitlements = ["desktopAdvN","3DAnalystN","dataReviewerN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN","dataInteropN"]
-    ents = agoAdmin.getEntitlements()
-    newUsers = []
-    for user in users:
-        if overwriteAll == False:
+    productsReturn = agoAdmin.getEntitlements(products)
+    #print productsReturn
+
+    AddUsers = {}
+    print "setting entitlements for " + str(products)
+    for product in products:
+        newUsers = []
+        print product
+        print product + " new users:"
+
+        for user in users:
+
             found = False
-            for ent in ents:
-                if user["username"] == ent["username"]:
+            for productUser in productsReturn[product]:
+                if user["username"] == productUser["username"]:
                     found = True
                     break
             if found == False:
-                newUsers.append(user)
-           ## print user["username"]
-        else:
-            newUsers.append(user)
+                newUsers.append(str(user["username"]))
+               # print user["username"]
+        AddUsers[product]=newUsers
+        print newUsers
 
-    response= agoAdmin.setEntitlements(newUsers,userEntitlements)
+
+    response= agoAdmin.setEntitlements(AddUsers)
     print response
+
 except Exception,e:
+    print "WHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOA"
     print str(e)
