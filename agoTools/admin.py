@@ -95,7 +95,7 @@ class Admin:
         response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/'+groupID+'/users?' + parameters).read()
         groupUsers = json.loads(response)
         return groupUsers
-    def getUsers(self, roles=None, daysToCheck=10000):
+    def getUsers(self, roles=None, daysToCheck=10000,groupName=None):
         '''
         Returns a list of all users in the organization (requires admin access).
         Optionally provide a list of roles to filter the results (e.g. ['org_publisher']).
@@ -105,6 +105,8 @@ class Admin:
          #   roles = ['org_admin', 'org_publisher', 'org_user']
             #roles = ['org_admin', 'org_publisher', 'org_author', 'org_viewer'] # new roles to support Dec 2013 update
         #the role property of a user is either one of the standard roles or a custom role ID. Loop through and build a list of ids from the queried roles.
+        if groupName == "":
+            groupName = None
         if roles:
             standardRoles = ['org_admin', 'org_publisher', 'org_author', 'org_viewer']
             queryRoleIDs=[]
@@ -119,8 +121,12 @@ class Admin:
                     if roleName == role["name"]:
                         queryRoleIDs.append(role["id"])
         allUsers = []
-        users = self.__users__()
-        for user in users['users']:
+        if groupName:
+            groupID = findGroup(groupName)
+            users = getUsersInGroup(groupID)
+        else:
+            users = self.__users__()['users']
+        for user in users:
             if roles:
                 if not user['role'] in queryRoleIDs:
                     continue
