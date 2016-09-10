@@ -12,9 +12,9 @@ try:
 
     ##2) set userType to 'both' to enable Esri Access or 'arcgisonly' to disable
     userType = "both"
-   -##3) Set constrainDays to a number greater than 0 to filter users created in the last n days. 
-    ##    Leave set to 0 in to use default 10000 days
- -  constrainDays = 0
+   ##3) Set constrainDays to a number greater than 0 to filter users created in the last n days.
+    ##    Leave set to None  to use default 10000 days
+    constrainDays = None
     ####################################
     agoAdmin = Admin(adminUsername,password=adminPassword)
     ##users = agoAdmin.getUsers()
@@ -26,7 +26,7 @@ try:
     print str(len(users)) + " users found."
     for user in users:
         userName=user["username"]
-        print userName
+
         response=agoAdmin.setUserType(userName, userType)
 except Exception as e:
     print e

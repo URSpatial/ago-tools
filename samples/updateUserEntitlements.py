@@ -1,76 +1,85 @@
 import sys
+import os
 sys.path.append(r"..")
 from agoTools.admin import Admin
+##try:
+    ##1) Enter ago org admin credentials as comandline parameter or enter them below######
+if len(sys.argv) > 1:
+    adminUsername = sys.argv[1]
+    adminPassword = sys.argv[2]
+
+else:
+    adminUsername = "your_admin_username"
+    adminPassword = "your_admin_password"
+##2)set constrainDays to a number greater than 0 to narrow getUsers results based on the difference between current date-time and user creation date-time. Leave set to 0 in order to use default 10000 days
+constrainDays = 0
+##3) Update & overwrite licenses for everyone or just assign to users with no current entitlements
+overwriteAll = False
+##4) Define which products to grant entitlements for.######
+
+arcGISPro=True
+geoPlanner= False
+appStudio=False
+communityAnalyst=True
+businessAnalyst=True
+
+##5) If setting entitlements for a specific group, set the third comandline parameter to the name of the AGO group set userGroup equal to the title of the AGO group as string
 try:
-        ##1) Enter ago org admin credentials as comandline parameter or enter them below######
-    if len(sys.argv) > 1:
-        adminUsername = sys.argv[1]
-        adminPassword = sys.argv[2]
+    userGroup = sys.argv[3]
+except:
+    userGroup=None
 
-    else:
-        adminUsername = "your_admin_username"
-        adminPassword = "your_admin_password"
-    ##2)set constrainDays to a number greater than 0 to narrow getUsers results based on the difference between current date-time and user creation date-time. Leave set to 0 in order to use default 10000 days
-    constrainDays = 0
-    ##3) Update & overwrite licenses for everyone or just assign to users with no current entitlements
-    overwriteAll = False
-    ##4) Define which products to grant entitlements for.######
+####################################
+agoAdmin = Admin(adminUsername,password=adminPassword)
 
-    arcGISPro=True
-    geoPlanner= False
-    appStudio=False
-    communityAnalyst=True
-    businessAnalyst=True
+products = []
+if arcGISPro:
+    products.append("pro")
+if geoPlanner:
+    products.append("geo")
+if appStudio:
+    products.append("app")
+if communityAnalyst:
+    products.append("cao")
+if businessAnalyst:
+    products.append("bao")
 
+if constrainDays:
+    users=agoAdmin.getUsers(daysToCheck=constrainDays, groupName=userGroup)
+else:
+    users= agoAdmin.getUsers(groupName=userGroup)
 
-    ####################################
-    agoAdmin = Admin(adminUsername,password=adminPassword)
+#print str(len(users)) + " users found."
 
-    products = []
-    if arcGISPro:
-        products.append("pro")
-    if geoPlanner:
-        products.append("geo")
-    if appStudio:
-        products.append("app")
-    if communityAnalyst:
-        products.append("cao")
-    if businessAnalyst:
-        products.append("bao")
+productsReturn = agoAdmin.getEntitlements(products)
+#print productsReturn
 
-    if constrainDays:
-        users=agoAdmin.getUsers(daysToCheck=constrainDays)
-    else:
-        users= agoAdmin.getUsers()
-    #print str(len(users)) + " users found."
+AddUsers = {}
+print "setting entitlements for " + str(products)
+for product in products:
+    newUsers = []
+    print product
+    print product + " new users:"
 
-    productsReturn = agoAdmin.getEntitlements(products)
-    #print productsReturn
+    for user in users:
 
-    AddUsers = {}
-    print "setting entitlements for " + str(products)
-    for product in products:
-        newUsers = []
-        print product
-        print product + " new users:"
-
-        for user in users:
-
-            found = False
-            for productUser in productsReturn[product]:
-                if user["username"] == productUser["username"]:
-                    found = True
-                    break
-            if found == False:
-                newUsers.append(str(user["username"]))
-               # print user["username"]
-        AddUsers[product]=newUsers
-        print newUsers
+        found = False
+        for productUser in productsReturn[product]:
+            if user["username"] == productUser["username"]:
+                found = True
+                break
+        if found == False:
+            newUsers.append(str(user["username"]))
+           # print user["username"]
+    AddUsers[product]=newUsers
+    print newUsers
 
 
-    response= agoAdmin.setEntitlements(AddUsers)
-    print response
+response= agoAdmin.setEntitlements(AddUsers)
+print response
 
-except Exception,e:
-    print "WHOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOA"
-    print str(e)
+##except Exception,e:
+##    print str(e)
+##    exc_type, exc_obj, exc_tb = sys.exc_info()
+##    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+##    print(exc_type, fname, exc_tb.tb_lineno)

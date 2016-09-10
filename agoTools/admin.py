@@ -92,6 +92,8 @@ class Admin:
         parameters = urllib.urlencode({'token' : self.user.token,
                                        'f' : 'json'})
         portalId = self.user.__portalId__()
+        print "waffles "
+        print groupID
         response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/'+groupID+'/users?' + parameters).read()
         groupUsers = json.loads(response)
         return groupUsers
@@ -122,14 +124,24 @@ class Admin:
                         queryRoleIDs.append(role["id"])
         allUsers = []
         if groupName:
-            groupID = findGroup(groupName)
-            users = getUsersInGroup(groupID)
-        else:
-            users = self.__users__()['users']
-        for user in users:
+            print groupName
+            groupID = self.findGroup(groupName)
+            print groupID
+
+            queryGroupUsers = self.getUsersInGroup(groupID["id"])['users']
+
+        users = self.__users__()
+
+        for user in users['users']:
+
             if roles:
                 if not user['role'] in queryRoleIDs:
                     continue
+
+            if groupName:
+                    if not user['username'] in queryGroupUsers:
+                        continue
+
             if date.fromtimestamp(float(user['created'])/1000) > date.today()-timedelta(days=daysToCheck):
                 allUsers.append(user)
         while users['nextStart'] > 0:
@@ -138,6 +150,10 @@ class Admin:
                 if roles:
                     if not user['role'] in queryRoleIDs:
                         continue
+                if groupName:
+                    if not user['username'] in queryGroupUsers:
+                        continue
+
                 if date.fromtimestamp(float(user['created'])/1000) > date.today()-timedelta(days=daysToCheck):
                     allUsers.append(user)
         return allUsers
@@ -304,7 +320,10 @@ class Admin:
         '''
         try:
 
-
+            if type(newUsers) == list:
+                Users = {"pro":newUsers}
+            elif type(newUsers) == dict:
+                Users = newUsers
 
             prodNumbers={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo":"5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51", "cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
             prodTags = {"pro":["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"], "geo":["GeoPlanner"], "app":["appstudiostd"], "cao":["CommunityAnlyst"], "bao":["BusinessAnlyst"]}
@@ -331,7 +350,12 @@ class Admin:
                 print message
         except Exception, e:
             print e
-    def getEntitlements(self, products):
+    def getEntitlements(self, products=None):
+        old=0
+        if not products:
+            old=1
+            products=["pro"]
+
         productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo": "5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51" ,"cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
         parameters = urllib.urlencode({'token' : self.user.token,
                                        'f' : 'json'
@@ -342,9 +366,10 @@ class Admin:
             entitlements = json.loads(response)
             entitlements["userEntitlements"]
             productUsers[product] = entitlements["userEntitlements"]
-
-        return productUsers
-
+        if old==0:
+            return productUsers
+        else:
+            return productUsers["pro"]
 
     def reassignAllGroupOwnership(self, userFrom, userTo):
         '''
