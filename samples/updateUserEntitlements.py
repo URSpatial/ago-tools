@@ -23,7 +23,7 @@ appStudio=False
 communityAnalyst=True
 businessAnalyst=True
 
-##5) If setting entitlements for a specific group, set the third comandline parameter to the name of the AGO group set userGroup equal to the title of the AGO group as string
+##5) If setting entitlements for a specific group, set the third comand line parameter to the name of the AGO group OR set userGroup equal to the title of the AGO group as string
 try:
     userGroup = sys.argv[3]
 except:
