@@ -1,70 +1,109 @@
 import sys
 import os.path
 import csv
-sys.path.append(r"..\..")
+#print "path",os.path.abspath('..\\..')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(sys.argv[0]))))
 from agoTools.admin import Admin
-try:
-    ##1) Enter ago org admin credentials as comandline parameter or enter them below in after the else######
-    if len(sys.argv) > 1:
-        adminUsername = sys.argv[1]
-        adminPassword = sys.argv[2]
-        folder= sys.argv[3]
-        tag= sys.argv[4]
-        emailDomain= sys.argv[5]
-    else:
-        adminUsername = "your_admin_username"
-        adminPassword = "your_admin_password"
-        folder= r'agoGroupAdminCSVs\*AddFolderforCSVs*'
-        tag= u"your_org_tag_here"
-        emailDomain= "yourDomain.com"
+##print sys.argv[0]
+if len(sys.argv) < 2:
+    agoAdmin = Admin("CenterSpatialStudiesUoR","https://univredlands.maps.arcgis.com",password="Redlands!1")
+    folder= r'\\geosrv\tools\agoGroupAdmin\CAS'
+    tag= u"_univredlands"
+elif sys.argv[1]=='css':
+    print "logging in..."
+    agoAdmin = Admin("CenterSpatialStudiesUoR",portal="https://univredlands.maps.arcgis.com",password="Redlands!1")
+    folder= r'\\geosrv\tools\agoGroupAdmin\CAS'
+    tag= u"_univredlands"
+elif sys.argv[1]=='sb':
+    agoAdmin = Admin("spatialstudies_business",password="bulld0gsGIS")
+    folder= r'\\geosrv\tools\agoGroupAdmin\SOB'
+    tag= u"_redlandsbusiness"
 
+# User parameters:
+print "getting users..."
+orgUsers= agoAdmin.getUsers()
+orgUserNames = []
+for orgUser in orgUsers:
+    orgUserNames.append(orgUser["username"])
 
-    agoAdmin = Admin(adminUsername,password=adminPassword)
+#group=groups[0]
 
+for filename in os.listdir(folder):
+    isFile = os.path.isfile(folder+ "\\" + filename)
+    if isFile == True:
+        users=[]
+        groupName = filename.split('.')[0]
+        fileType = filename.split('.')[1]
+        if fileType != "csv":
+            print fileType+" not csv"
+            continue
+        print "processing group",groupName
+        try:
+            group = agoAdmin.findGroup(groupName)
+            if group == None:
+                print "**Can't find",groupName +" in AGO**"
+                continue
+            groupid= group['id']
 
-    # User parameters:
-    orgUsers= agoAdmin.getUsers()
+##            print groupName
+            groupMembers = agoAdmin.getUsersInGroup(group['id'])
+            groupUsers = groupMembers['users']
+            i =0
+            while i < len(groupUsers):
+                groupUsers[i] = groupUsers[i].lower()
+                i+=1
+            filePath= folder + "\\" + filename
+            with open(filePath, "rU") as csvfile:
+                reader= csv.reader(csvfile, delimiter = ",", quotechar = "|")
+                for row in reader:
+                    userEmail = row[0]
+                    userEmail=userEmail.replace("-", "_")
+                    userEmail = userEmail.lower().strip()
+##                    #print userEmail
+                    if "," in userEmail:
+                        continue
+                    if "@" in userEmail:
+                        mailDomain= userEmail.split('@')
+                        mailDomain= str(mailDomain[1])
+                        #print mailDomain
+                        if mailDomain.lower() == 'redlands.edu':
 
-    #group=groups[0]
-
-    for filename in os.listdir(folder):
-        isFile = os.path.isfile(folder+ "\\" + filename)
-        if isFile == True:
-            users=[]
-            groupName = filename.split('.')[0]
-            try:
-                groupid= agoAdmin.findGroup(groupName)['id']
-                print groupName
-                filePath= folder + "\\" + filename
-                with open(filePath, "rU") as csvfile:
-                    reader= csv.reader(csvfile, delimiter = " ", quotechar = "|")
-                    for row in reader:
-                        userEmail = row[0]
-                        userEmail=userEmail.replace("-", "_")
-                        print userEmail
-
-                        if "@" in userEmail:
-                            userMailDomain= userEmail.split('@')
-                            userMailDomain= str(userMailDomain[1])
-
-                            if userMailDomain.lower() == emailDomain.lower():
-
-                                userName= userEmail + tag
-
-                                users.append(userName)
-                            else:
-
-                                users.append(userEmail)
+                            #print tag
+                            userName= userEmail + tag
+                            userName = userName.lower().strip()
+                            #print userName
+                            if userName not in groupUsers:
+                                if userName not in orgUserNames:
+                                    print "\t-" + userName + " is not a member of the organization"
+                                else:
+                                    print "\t-adding " + userName
+                                    users.append(userName)
 
                         else:
-
-
+                            #print"ding"
                             users.append(userEmail)
-                #print users[0]
+
+                    else:
+                        print userEmail
+                        #print "dong"
+                        users.append(userEmail)
+            #print users[0]
+            if len(users) == 0:
+                print "\t-no new users"
+            else:
                 agoAdmin.addUsersToGroups(users, [groupid])
-            except Exception as e:
-                print "\r\nRuh roh, there was an issue on line {}: ".format(sys.exc_info()[-1].tb_lineno) + str(e) +" \r\n"
+        except Exception as e:
+            print "**Error with",groupName +"**"
+            print "\tError on line {}: ".format(sys.exc_info()[-1].tb_lineno) + str(e) +" \r\n "+ groupid
 
-
-except Exception as e:
-    print e
+##        groupUsers= agoAdmin.getUsersInGroup(groupName)
+##        groupUsers= groupUsers["users"]
+##        print
+##        addUsers=[]
+##        print len(addUsers)
+##        for user in orgUsers:
+##            if not user["username"] in groupUsers:
+##                print user["username"]
+##                addUsers.append(user["username"])
+##
+##        agoAdmin.addUsersToGroups(addUsers, [groupName])

@@ -12,7 +12,8 @@ from collections import namedtuple
 class Admin:
     '''A class of tools for administering AGO Orgs or Portals'''
     def __init__(self, username, portal=None, password=None):
-        from . import User
+        from . import adminUser as User
+
         self.user = User(username, portal, password)
 
     def __users__(self, start=0):
@@ -23,6 +24,7 @@ class Admin:
                                        'num' : 100})
         portalId = self.user.__portalId__()
         response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/portals/' + portalId + '/users?' + parameters).read()
+        #print response
         users = json.loads(response)
         return users
     def __roles__(self,start=0):
@@ -59,6 +61,17 @@ class Admin:
             for role in roles['roles']:
                 allRoles.append(role)
         return allRoles
+    def setUserRole(self, userNames, roleType):
+        '''Updates user profile first and last name for one user
+        parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
+        for userName in userNames:
+            parameters= urllib.urlencode({"user": userName,
+                            "role": roleType,
+                            'f' : 'json',
+                            'token': self.user.token})
+            request = self.user.portalUrl + '/sharing/rest/portals/self/updateUserRole'
+            response = urllib.urlopen(request, parameters).read()   # requires POST
+
     def getGroups(self):
         '''
         Returns a list of groups defined in the organization.
@@ -80,11 +93,13 @@ class Admin:
                                        'f' : 'json'})
         portalId = self.user.__portalId__()
         response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups?' + parameters).read()
-        groupUsers = json.loads(response)
-        if "results" in groupUsers and len(groupUsers["results"]) > 0:
-            return groupUsers["results"][0]
-        else:
-            return None
+        results = json.loads(response)
+
+        if "results" in results and len(results["results"]) > 0:
+            for result in results["results"]:
+                if result["title"].lower() == title.lower():
+                    return result
+        return None
     def getUsersInGroup(self,groupID):
         '''
         Returns a list of users in a group
@@ -92,12 +107,10 @@ class Admin:
         parameters = urllib.urlencode({'token' : self.user.token,
                                        'f' : 'json'})
         portalId = self.user.__portalId__()
-        print "waffles "
-        print groupID
         response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/'+groupID+'/users?' + parameters).read()
         groupUsers = json.loads(response)
         return groupUsers
-    def getUsers(self, roles=None, daysToCheck=10000,groupName=None):
+    def getUsers(self, roles=None, daysToCheck=10000, groupName=None):
         '''
         Returns a list of all users in the organization (requires admin access).
         Optionally provide a list of roles to filter the results (e.g. ['org_publisher']).
@@ -110,7 +123,14 @@ class Admin:
         if groupName == "":
             groupName = None
         if roles:
-            standardRoles = ['org_admin', 'org_publisher', 'org_author', 'org_viewer']
+            if "Publisher" in roles:
+                roles.append("org_publisher")
+                roles.remove("Publisher")
+            if "Administrator" in roles:
+                roles.append("org_admin")
+                roles.remove("Administrator")
+
+            standardRoles = ['org_admin', 'org_publisher']
             queryRoleIDs=[]
             #if it's a standard role, go ahead and add it.
             for roleName in roles:
@@ -124,36 +144,24 @@ class Admin:
                         queryRoleIDs.append(role["id"])
         allUsers = []
         if groupName:
-            print groupName
-            groupID = self.findGroup(groupName)
-            print groupID
-
-            queryGroupUsers = self.getUsersInGroup(groupID["id"])['users']
-
-        users = self.__users__()
-
+            groupID = findGroup(groupName)
+            users = getUsersInGroup(groupID)
+        else:
+            users = self.__users__()
+##        print users
         for user in users['users']:
-
             if roles:
                 if not user['role'] in queryRoleIDs:
                     continue
-
-            if groupName:
-                    if not user['username'] in queryGroupUsers:
-                        continue
-
             if date.fromtimestamp(float(user['created'])/1000) > date.today()-timedelta(days=daysToCheck):
                 allUsers.append(user)
         while users['nextStart'] > 0:
             users = self.__users__(users['nextStart'])
             for user in users['users']:
+##                print user
                 if roles:
                     if not user['role'] in queryRoleIDs:
                         continue
-                if groupName:
-                    if not user['username'] in queryGroupUsers:
-                        continue
-
                 if date.fromtimestamp(float(user['created'])/1000) > date.today()-timedelta(days=daysToCheck):
                     allUsers.append(user)
         return allUsers
@@ -221,11 +229,23 @@ class Admin:
         # Assign users to the specified group(s).
         parameters = urllib.urlencode({'token': self.user.token, 'f': 'json'})
         for group in groups:
+            #maximum number of users per call is 25 so we have to page the calls when above
+            pageStart = 0
+            pageEnd = 25
+            while len(users) > pageEnd:
+                pageUsers = users[pageStart:pageEnd]
+                # Add Users - REQUIRES POST method (undocumented operation as of 2013-11-12).
+                response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/' + group + '/addUsers?', 'users=' + ','.join(pageUsers) + "&" + parameters).read()
+                # Users not added will be reported back with each group.
+                toolSummary.append({group: json.loads(response)})
+                pageStart = pageEnd
+                pageEnd = pageEnd + 25
+            pageEnd = len(users)
+            pageUsers = users[pageStart:pageEnd]
             # Add Users - REQUIRES POST method (undocumented operation as of 2013-11-12).
-            response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/' + group + '/addUsers?', 'users=' + ','.join(users) + "&" + parameters).read()
+            response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/community/groups/' + group + '/addUsers?', 'users=' + ','.join(pageUsers) + "&" + parameters).read()
             # Users not added will be reported back with each group.
             toolSummary.append({group: json.loads(response)})
-
         return toolSummary
 
     def reassignAllUser1ItemsToUser2(self, userFrom, userTo):
@@ -294,6 +314,16 @@ class Admin:
 
         result = response.read()
         return json.loads(result)
+
+    def setUserFullName(self, userName, FullName):
+        '''Updates user profile first and last name for one user
+        parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
+        parameters= urllib.urlencode({"FullName": FullName,
+                        'f' : 'json',
+                        'token': self.user.token})
+        request = self.user.portalUrl + '/sharing/rest/community/users/'+ str(userName)+'/update'
+        response = urllib.urlopen(request, parameters).read()   # requires POST
+
     def setUserType(self, userName, userType):
         '''Updates user profile first and last name for one user
         parameter FullName is a String for the Full Name (first and last) of the user to be updated'''
@@ -324,9 +354,16 @@ class Admin:
                 Users = {"pro":newUsers}
             elif type(newUsers) == dict:
                 Users = newUsers
+            #print self.user.portalUrl
 
-            prodNumbers={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo":"5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51", "cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
-            prodTags = {"pro":["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"], "geo":["GeoPlanner"], "app":["appstudiostd"], "cao":["CommunityAnlyst"], "bao":["BusinessAnlyst"]}
+            if self.user.portalUrl == 'https://www.arcgis.com':
+                prodNumbers={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo":"5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51", "cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a", "insights":"18cc7f0e72764dc1ba0cbe82f2273437"}
+            else:
+                prodNumbers = {"pro": "", "geo": "",
+                               "app": "", "cao": "",
+                               "bao": "",
+                               "insights": "f761dd0f298944dcab22d1e888c60293"}
+            prodTags = {"pro":["3DAnalystN","dataReviewerN","desktopAdvN","geostatAnalystN","networkAnalystN","spatialAnalystN","workflowMgrN"], "geo":["GeoPlanner"], "app":["appstudiostd"], "cao":["CommunityAnlyst"], "bao":["BusinessAnlyst"],"insights":["Insights"]}
 
             for user in newUsers:
                 product = user
@@ -338,25 +375,69 @@ class Admin:
 
 
                 parameters= urllib.urlencode({"userEntitlements":{"users":userNames, "entitlements":entTag},
+                                'suppressCustomerEmail':'true',
                                 'f' : 'json',
                                 'token': self.user.token})
                 request = self.user.portalUrl + '/sharing/rest/content/listings/'+ productNum +'/provisionUserEntitlements'
+                #print request
                 response = urllib.urlopen(request, parameters).read()   # requires POST
                 message="Unknown error"
                 if 'success' in response:
                     message= "Entitlements successfully set for " +product
                 elif 'error' in response:
                     message= "And error has occurred: " + response
-                print message
+##                print message
+                return response
+        except Exception, e:
+            a=0
+##            print e
+
+    def removeEntitlements(self,userList):
+        '''Removes entitlements for users
+        - users parameter is a List of username strings
+        '''
+        try:
+            #print len(userList)
+            prodNumbers=["2d2a9c99bb2a43548c31cd8e32217af6", "5e99f4fa519949209cd3da2966fd543b", "6a05f1bb2b60461fa702c648bff17c51", "7b504b19ddbd4f0db06e9a16eebb5efc", "ed12fda02a0d4bd08f23dbc879bba00a", '18cc7f0e72764dc1ba0cbe82f2273437']
+            productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6",
+                "geo":"5e99f4fa519949209cd3da2966fd543b",
+                "app":"6a05f1bb2b60461fa702c648bff17c51",
+                "cao":"7b504b19ddbd4f0db06e9a16eebb5efc",
+                "bao":"ed12fda02a0d4bd08f23dbc879bba00a",
+                "insights":"18cc7f0e72764dc1ba0cbe82f2273437"}
+            for prodName,prodNum in productsDict.items():
+
+
+                parameters= urllib.urlencode({"userEntitlements":{"users":userList, "entitlements":[]},
+                                'suppressCustomerEmail':'true',
+                                'f' : 'json',
+                                'token': self.user.token})
+                request = self.user.portalUrl + '/sharing/rest/content/listings/'+ prodNum +'/provisionUserEntitlements'
+                response = urllib.urlopen(request, parameters).read()   # requires POST
+                message="Unknown error"
+                if 'success' in response:
+                    message= "Entitlements successfully set for",userList
+                elif 'error' in response:
+                    message= "And error has occurred with",str(userList),"-", response
+                    print message
         except Exception, e:
             print e
-    def getEntitlements(self, products=None):
-        old=0
-        if not products:
-            old=1
-            products=["pro"]
 
-        productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo": "5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51" ,"cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a"}
+
+    def getEntitlements(self, products=["pro"]):
+        if self.user.portalUrl == 'https://www.arcgis.com':
+            productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6",
+            "geo":"5e99f4fa519949209cd3da2966fd543b",
+            "app":"6a05f1bb2b60461fa702c648bff17c51",
+            "cao":"7b504b19ddbd4f0db06e9a16eebb5efc",
+            "bao":"ed12fda02a0d4bd08f23dbc879bba00a",
+            "insights":"18cc7f0e72764dc1ba0cbe82f2273437"}
+        else:
+            productsDict = {"pro": "", "geo": "",
+                           "app": "", "cao": "",
+                           "bao": "",
+                           "insights": "f761dd0f298944dcab22d1e888c60293"}
+##        productsDict={"pro":"2d2a9c99bb2a43548c31cd8e32217af6", "geo": "5e99f4fa519949209cd3da2966fd543b", "app":"6a05f1bb2b60461fa702c648bff17c51" ,"cao":"7b504b19ddbd4f0db06e9a16eebb5efc", "bao":"ed12fda02a0d4bd08f23dbc879bba00a","insights":"f761dd0f298944dcab22d1e888c60293"}
         parameters = urllib.urlencode({'token' : self.user.token,
                                        'f' : 'json'
                                       })
@@ -364,12 +445,35 @@ class Admin:
         for product in products:
             response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/content/listings/'+ productsDict[product] +'/userEntitlements?' + parameters).read()
             entitlements = json.loads(response)
-            entitlements["userEntitlements"]
+##            print entitlements
+            # entitlements["userEntitlements"]
             productUsers[product] = entitlements["userEntitlements"]
-        if old==0:
-            return productUsers
-        else:
-            return productUsers["pro"]
+
+        return productUsers
+
+    # def getCredits(self, products=["pro"]):
+    #
+    #     parameters = urllib.urlencode({'token' : self.user.token,
+    #                                    'f' : 'json'
+    #                                   })
+    #
+    #     response = urllib.urlopen(self.user.portalUrl + 'unassignUserCredits' + parameters).read()
+    #     entitlements = json.loads(response)
+    #     entitlements["userEntitlements"]
+    #     productUsers[product] = entitlements["userEntitlements"]
+    #
+    #     return productUsers
+    def setCredits(self,username,userCredits):
+        portalId = self.user.__portalId__()
+        parameters = urllib.urlencode({'token' : self.user.token,
+                                       'f' : 'json',
+                                       'userAssignments':[{"username":str(username),"credits":userCredits}]})
+
+        response = urllib.urlopen(self.user.portalUrl + '/sharing/rest/portals/' + portalId + '/assignUserCredits',parameters).read()
+        return response
+        #print response
+        users = json.loads(response)
+
 
     def reassignAllGroupOwnership(self, userFrom, userTo):
         '''
@@ -1327,19 +1431,19 @@ class Admin:
 
         requestToUpdate= self.user.portalUrl + '/sharing/rest/portals/self/updateuserrole'
 
-        for u in self.usersToUpdate.user_list:
-            parameters = urllib.urlencode({'user':u.Username,
-                                           'role':u.Role,
+        for u in self.usersToUpdate:
+            parameters = urllib.urlencode({'user':u.username,
+                                           'role':u.role,
                                            'token' : self.user.token,
                                            'f' : 'json'})
 
-            print "Updating Role for " + u.Username + " to " + u.Role + "..."
+##            print "Updating Role for " + u.Username + " to " + u.Role + "..."
             response = urllib.urlopen(requestToUpdate,parameters).read()
             jresult = json.loads(response)
             success= str(jresult["success"])
-            print "Success: " + success
-
-        print "Complete."
+##            print "Success: " + success
+##
+##        print "Complete."
         return None
 
 
